@@ -1,8 +1,20 @@
 use std::io;
 use reqwest;
 use tokio;
-
+use serde_json;
 use serde::{Serialize, Deserialize};
+
+#[derive(serde::Deserialize)]
+pub struct ApiResponse {
+    results: Vec<Question>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct Question {
+    question: String,
+    correct_answer: String,
+    incorrect_answers: Vec<String>,
+}
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -33,21 +45,66 @@ impl Book{
 }
 
 
-#[tokio::main]
-pub async fn api() -> Result<(), reqwest::Error> {
+pub async fn get_questions() -> Result<Vec<Question>, reqwest::Error> {
     let url = "https://opentdb.com/api.php?amount=10";
 
     let response = reqwest::get(url).await?;
 
+    let mut quiz_objects : Vec<Question> = Vec::new();
     if response.status().is_success() {
         let body = response.text().await?;
-        let questions_vec = vec!()
-        println!("Response Body: {:?}", body);
+        let api_response: ApiResponse = serde_json::from_str(&body)
+            .expect("Failed to parse JSON"); // Replace with better error handling
+
+        for question in api_response.results {
+            let mut quiz_object = Question { question: question.question, correct_answer: question.correct_answer, incorrect_answers: question.incorrect_answers };
+            quiz_objects.push(quiz_object)
+        }
     } else {
         eprintln!("Request failed with status: {}", response.status());
     }
+    Ok(quiz_objects)
+}
 
-    Ok(())
+
+pub fn start_quizz(questions : Vec<Question>){
+    let mut score = 0;
+    println!("Welcome to the rusty quizz!");
+    for question in questions{
+        let mut all_questions: Vec<String> = Vec::new();
+        for answer in question.incorrect_answers{
+            all_questions.push(answer);
+        }
+        all_questions.push(question.correct_answer.clone());
+
+
+        match all_questions.len() {
+            2 => {
+                println!("{}", question.question);
+                println!("1.{:?}  2.{:?}", all_questions[0], all_questions[1]);
+            },
+        
+            3 => {
+                println!("{}", question.question);
+                println!("1.{:?}  2.{:?}  3.{:?}", all_questions[0], all_questions[1], all_questions[2]);
+            },
+        
+            4 => {
+                println!("{}", question.question);
+                println!("1.{:?}  2.{:?}  3.{:?}  4.{:?}", all_questions[0], all_questions[1], all_questions[2], all_questions[3]);
+            },
+        
+            _ => {println!("{}", all_questions.len())} // You might want to handle other cases or do nothing
+        }
+        let mut answer = read_input("Your answer: ");
+        if answer == question.correct_answer{
+            println!("Correct aswer");
+            score += 1
+        } else {
+            println!("Incorrect aswer");
+        }
+    }
+    println!("{}/10 correct answers", score)
 }
 
 

@@ -15,8 +15,8 @@ async fn main() -> mongodb::error::Result<()> {
     0 - Exit
     1 - List all books
     2 - Add book
-    3 - Edit book
-    4 - Delete book
+    3 - Delete book
+    4 - Play quizz
     ";
 
     loop {
@@ -34,14 +34,13 @@ async fn main() -> mongodb::error::Result<()> {
                 println!("{:?}", inserted_book)
             },
             "3" => {
-                thread::spawn(|| {
-                if let Err(err) = library::api(){
-                    eprintln!("Err")
-                }});
-            },
-            "4" => {
                 let book_title = "Book Title to Delete"; 
                 db.remove_book(book_title).await?;
+               
+            },
+            "4" => {
+                let response = library::get_questions().await.unwrap();
+                library::start_quizz(response);
             },
             _ => println!("Invalid input!")
         }
